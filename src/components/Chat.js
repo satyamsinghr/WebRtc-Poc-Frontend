@@ -25,8 +25,23 @@ const Chat = ({ user }) => {
         socket.on('receiveMessage', (message) => {
             setMessages((prevMessages) => [...prevMessages, message]);
         });
+
+        socket.on('updateUserStatus', (users) => {
+            setUsers(users.filter((x) => x.id !== userData.id));
+        });
+        socket.on('messagesMarkedAsSeen', ({ from }) => {
+            setMessages((prevMessages) => prevMessages.map(msg => {
+                if (msg.user === from && msg.to === userData.id) {
+                    return { ...msg, seen: true };
+                }
+                return msg;
+            }));
+        });
+
         return () => {
             socket.off('receiveMessage');
+            socket.off('updateUserStatus');
+            socket.off('messagesMarkedAsSeen');
         };
     }, []);
 
@@ -43,6 +58,8 @@ const Chat = ({ user }) => {
         const fetchUserData = async () => {
             try {
                 const response = await axios.get('http://localhost:4000/users');
+                let daataa = response.data.filter((x) => x.id !== storedUsers.id)
+                console.log(daataa);
                 setUsers(response.data.filter((x) => x.id !== storedUsers.id));
             } catch (error) {
                 console.error('Error fetching user data:', error);
@@ -88,46 +105,62 @@ const Chat = ({ user }) => {
         fetchMessages();
     }, [userData]);
 
+
+    const handleUserClick = (u) => {
+        setSelectedUser(u);
+        socket.emit('markMessagesAsSeen', { from: userData.id, to: u.id });
+    };
+
+    const getLastMessage = (user) => {
+        const userMessagesSentToUser = messages.filter(
+            (msg) => msg.user === user.email && msg.to === userData.id
+        );
+        const userMessagesSentByUser = messages.filter(
+            (msg) => msg.user === userData.email && msg.to === user.id
+        );
+        const allUserMessages = [...userMessagesSentToUser, ...userMessagesSentByUser];
+        if (allUserMessages.length === 0) return '';
+        const lastMessage = allUserMessages.reduce((prev, current) => {
+            return (new Date(prev.timestamp) > new Date(current.timestamp)) ? prev : current;
+        });
+        return lastMessage.text;
+    };
+
+    const getLastMessageTime = (user) => {
+        const userMessagesSentToUser = messages.filter(
+            (msg) => msg.user === user.email && msg.to === userData.id
+        );
+        const userMessagesSentByUser = messages.filter(
+            (msg) => msg.user === userData.email && msg.to === user.id
+        );
+        const allUserMessages = [...userMessagesSentToUser, ...userMessagesSentByUser];
+        if (allUserMessages.length === 0) return '';
+        const lastMessage = allUserMessages.reduce((prev, current) => {
+            return (new Date(prev.timestamp) > new Date(current.timestamp)) ? prev : current;
+        });
+        const timestamp = new Date(lastMessage.timestamp);
+        const hours = timestamp.getHours();
+        const minutes = timestamp.getMinutes();
+        const ampm = hours >= 12 ? 'PM' : 'AM';
+        const formattedHours = hours % 12 === 0 ? 12 : hours % 12;
+        const formattedMinutes = minutes < 10 ? '0' + minutes : minutes;
+        return `${formattedHours}:${formattedMinutes} ${ampm}`;
+    };
+
+
+    const getUnreadMessageCount = (user) => {
+        return messages.filter(
+            (msg) => msg.user === user.email && msg.to === userData.id && !msg.seen
+        ).length;
+    };
+
+
     const handleLogout = () => {
         localStorage.clear();
         navigate('/');
     };
 
     return (
-        // <div className="chat-container">
-        //   <div className="sidebar">
-        //     {users.map((u) => (
-        //       <div
-        //         key={u.id}
-        //         className={`user-item ${selectedUser && selectedUser.id === u.id ? 'selected' : ''}`}
-        //         onClick={() => setSelectedUser(u)}
-        //       >
-        //         {u.email}
-        //       </div>
-        //     ))}
-        //   </div>
-        //   <div className="chat-section">
-        //     <div className="messages-container">
-        //       {messages
-        //         .filter((msg) =>
-        //             (selectedUser && (msg.user === selectedUser.email || msg.to === selectedUser.id)) || (!selectedUser && msg.user === user.email))
-        //         .map((msg, index) => (
-        //           <div key={index} className={`message ${msg.user && user && msg.user === user.email ? 'own-message' : 'other-message'}`}>
-        //             <span className="message-user">{msg.user}: </span>
-        //             <span className="message-text">{msg.text}</span>
-        //           </div>
-        //         ))}
-        //     </div>
-        //     <input
-        //       value={message}
-        //       onChange={(e) => setMessage(e.target.value)}
-        //       placeholder="Type a message..."
-        //     />
-        //     <button onClick={sendMessage}>Send</button>
-        //   </div>
-        // </div>
-
-
 
         <section className="messageCEnterOuter">
             <div className="container-fluid px-0">
@@ -165,34 +198,39 @@ const Chat = ({ user }) => {
                 </div>
                 <div className="messageBody">
                     <div className="row g-3">
+
                         <div
                             className="col-xl-3 col-lg-4 col-md-12 col-sm-12 col-12">
                             <div className="user_list d-flex flex-column gap-2">
                                 <div
                                     className="overflow-auto d-flex flex-column gap-2">
-                                    {users.map((u) => (
-                                        <div
-                                            className={`d-flex user_outer  align-items-center gap-3 justify-content-between ${selectedUser && selectedUser.id === u.id ? 'active' : ''}`}
-                                            key={u.id}
-                                            onClick={() => setSelectedUser(u)}>
-                                            <div className="user  d-flex align-items-center gap-3 col">
+                                    {users.filter((x) => x.id !== userData.id).
+                                        map((u) => (
+                                            <div
+                                                className={`d-flex user_outer  align-items-center gap-3 justify-content-between ${selectedUser && selectedUser.id === u.id ? 'active' : ''}`}
+                                                key={u.id}
+                                                onClick={() => handleUserClick(u)}>
+                                                <div className="user  d-flex align-items-center gap-3 col">
 
-                                                <div className="img">
-                                                    <p className='m-0'>{u.firstName.charAt(0).toUpperCase()}{u.lastName.charAt(0).toUpperCase()}</p>
+                                                    <div className="img">
+                                                        <p className='m-0'>{u.firstName.charAt(0).toUpperCase()}{u.lastName.charAt(0).toUpperCase()}</p>
+                                                    </div>
+                                                    <div className="user_info">
+                                                        <h4>{u.firstName + " " + u.lastName} </h4>
+                                                        <p className="m-0">{getLastMessage(u)}</p>
+
+                                                    </div>
                                                 </div>
-                                                <div className="user_info">
-                                                    <h4>{u.firstName + " " + u.lastName} </h4>
-                                                    {/* <p class="m-0">Lorem Ipsum is
-                                                        simply
-                                                        dummy text of the</p> */}
+                                                <div
+                                                    class="message_time col d-flex align-items-end flex-column justify-content-end gap-1">
+                                                    {/* <p>09:14 AM</p> */}
+                                                    <p>{getLastMessageTime(u)}</p>
+                                                    {/* <div class="unread_count">1</div> */}
+                                                    {/* {getUnreadMessageCount(u) > 0 && (
+                                                        <div class="unread_count">{getUnreadMessageCount(u)}</div>
+                                                    )} */}
                                                 </div>
-                                            </div>
-                                            {/* <div
-                                                class="message_time col d-flex align-items-end flex-column justify-content-end gap-1">
-                                                <p>09:14 AM</p>
-                                                <div class="unread_count">1</div>
-                                            </div> */}
-                                        </div>))}
+                                            </div>))}
                                 </div>
                             </div>
                         </div>
@@ -208,12 +246,11 @@ const Chat = ({ user }) => {
                                         </div>
                                         <div className="user_info">
                                             <h4>{`${selectedUser?.firstName} ${selectedUser?.lastName}`}</h4>
-                                            <p
-                                                className="m-0 d-flex align-items-center gap-1">
-                                                <span className="active_status">
+                                            <p className="m-0 d-flex align-items-center gap-1">
+                                                <span className={`${selectedUser?.online ? 'active_status' : 'inactive_status'}`}></span>
+                                                {selectedUser?.online ? 'Online' : 'Offline'}
+                                            </p>
 
-                                                </span>
-                                                Online</p>
                                         </div>
                                     </div>
                                     <div

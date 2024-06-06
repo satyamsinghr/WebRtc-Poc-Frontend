@@ -75,6 +75,12 @@ section.messageCEnterOuter {
   background: #3cd053;
   border-radius: 10px;
 }
+.inactive_status {
+  width: 10px;
+  height: 10px;
+  background: red;
+  border-radius: 10px;
+}
 
 .search {
   width: 100%;
@@ -480,3 +486,7 @@ button.btn.btn-primary
     padding: 25px;
 }
 }
+/* .chat_time {
+  position: sticky;
+  top: 0;
+} */
