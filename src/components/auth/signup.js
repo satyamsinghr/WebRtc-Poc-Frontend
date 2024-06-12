@@ -45,7 +45,7 @@ const Signup = () => {
 
   const onSubmit = async (data) => {
     try {
-      const response = await axios.post('http://localhost:4000/signup', data);
+      const response = await axios.post('http://localhost:8000/signup', data);
       console.log('Response:', response.data);
       alert("User added successfully.")
       navigate("/");
