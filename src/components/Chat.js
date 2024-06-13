@@ -103,12 +103,13 @@ const Chat = ({ user }) => {
             }
         };
         fetchMessages();
-    }, [userData]);
+    }, [userData,selectedUser]);
 
 
     const handleUserClick = (u) => {
+        socket.emit('markMessagesAsSeen', { from: u.email, to: userData.id });
         setSelectedUser(u);
-        socket.emit('markMessagesAsSeen', { from: userData.id, to: u.id });
+        
     };
 
     const getLastMessage = (user) => {
@@ -222,13 +223,13 @@ const Chat = ({ user }) => {
                                                     </div>
                                                 </div>
                                                 <div
-                                                    class="message_time col d-flex align-items-end flex-column justify-content-end gap-1">
+                                                    className="message_time col d-flex align-items-end flex-column justify-content-end gap-1">
                                                     {/* <p>09:14 AM</p> */}
                                                     <p>{getLastMessageTime(u)}</p>
                                                     {/* <div class="unread_count">1</div> */}
-                                                    {/* {getUnreadMessageCount(u) > 0 && (
-                                                        <div class="unread_count">{getUnreadMessageCount(u)}</div>
-                                                    )} */}
+                                                    {getUnreadMessageCount(u) > 0 && (
+                                                        <div className="unread_count">{getUnreadMessageCount(u)}</div>
+                                                    )}
                                                 </div>
                                             </div>))}
                                 </div>
