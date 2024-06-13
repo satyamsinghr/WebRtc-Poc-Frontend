@@ -1,267 +1,4 @@
-// import React, { useEffect, useRef, useState } from 'react';
-// import io from 'socket.io-client';
-// import { useParams } from 'react-router-dom';
-
-// const VideoApp = () => {
-//     const { userId } = useParams();
-//     const socket = useRef(io('http://localhost:8000')); // Ref for socket.io instance
-//     const peer = useRef(null); // Ref for RTCPeerConnection instance
-//     const [users, setUsers] = useState(new Set()); 
-
-//     useEffect(() => {
-
-//         // Initialize RTCPeerConnection
-//         peer.current = new RTCPeerConnection({
-//             iceServers: [
-//                 {
-//                     urls: "stun:stun.stunprotocol.org"
-//                 }
-//             ]
-//         });
-
-//         // Set event listeners for RTCPeerConnection
-//         peer.current.ontrack = handleTrack;
-//         peer.current.onicecandidate = handleIceCandidate;
-
-//         peer.ontrack = async ({ streams: [stream] }) => {
-//             const status = document.getElementById('status');
-//             status.innerText = 'Incoming Stream';
-
-//             const video = document.getElementById('remote-video');
-//             if (!video.srcObject) {
-//                 video.srcObject = stream;
-//                 video.onloadedmetadata = () => {
-//                     video.play().catch(error => {
-//                         console.error('Error playing local video:', error);
-//                     });
-//                 };
-//             } else {
-//                 // You can choose to handle this scenario differently
-//                 console.warn('Video element already has srcObject set.');
-//             }
-//         };
-
-//         socket.current.on('incomming:answere', async data => {
-//             const status = document.getElementById('status');
-//             status.innerText = 'incomming:answere';
-
-//             const { offer } = data;
-//             // debugger                     
-//             if (!peer.current) {
-//                 console.error('PeerConnection does not exist.');
-//                 return;
-//             }
-//             // Check if peer connection is in the correct state
-
-//             if (peer.current.signalingState !== 'have-local-offer') {
-//                 console.warn('PeerConnection is not in the correct state to handle incoming call.');
-//                 return;
-//             }
-
-//             try {
-//                 await peer.current.setRemoteDescription(new RTCSessionDescription(offer));
-//             } catch (error) {
-//                 console.log('error in setRemoteDescription', error);
-//                 // await peer.current.setRemoteDescription(new RTCSessionDescription(offer));
-//             }
-//             // await peer.current.setRemoteDescription(new RTCSessionDescription(offer));
-//         });
-
-//         // Listen for socket connection
-//         socket.current.on('connect', () => {
-//             console.log('Socket connected:', socket.current.connected);
-//             // Now the socket connection is established, you can emit events or perform other actions
-//         });
-
-//         // Attempt to connect socket
-//         socket.current.connect();
-
-//         // Get user media on component mount
-//         getUserMedia();
-
-//         createCall(userId);
-
-//         // Cleanup function on component unmount
-//         return () => {
-//             peer.current.close();
-//         };
-//     }, []);
-
-//     // Function to handle incoming tracks
-//     const handleTrack = async ({ streams }) => {
-//         const remoteVideo = document.getElementById('remote-video');
-//         if (remoteVideo) {
-//             remoteVideo.srcObject = streams[0];
-//             remoteVideo.onloadedmetadata = () => {
-//                 remoteVideo.play().catch(error => {
-//                     console.error('Error playing local video:', error);
-//                 });
-//             };
-
-//             const mySteam = await navigator.mediaDevices.getUserMedia({
-//                 video: true,
-//             });
-
-//             for (const track of mySteam.getTracks()) {
-//                 peer.current.addTrack(track, mySteam);
-//             }
-
-//         }
-//     };
-
-//     // Function to handle ICE candidates
-//     const handleIceCandidate = (event) => {
-//         if (event.candidate) {
-//             // Send ICE candidate to server
-//             socket.current.emit('ice-candidate', { candidate: event.candidate });
-//         }
-//     };
-
-//     // Function to create a call
-//     const createCall = async (to) => {
-//         try {
-//             console.log('create call');
-//             // Create local offer
-//             const localOffer = await peer.current.createOffer();
-//             await peer.current.setLocalDescription(localOffer);
-
-//             // Send local offer to server
-//             console.log('Send local offer to server', { fromOffer: localOffer, to });
-//             console.log('Socket connected:', socket.current.connected);
-//             socket.current.emit('outgoing:call', { fromOffer: localOffer, to });
-//             console.log('Send local offer to server done');
-//         } catch (error) {
-//             console.error('Error creating call:', error);
-//         }
-//     };
-
-//     // Function to handle incoming call
-//     const handleIncomingCall = async (data) => {
-//         try {
-//             console.log('incoming call', data);
-//             const status = document.getElementById('status');
-//             status.innerText = 'incomming:call';
-
-//             const { from, offer } = data;
-
-//             // Set remote description
-//             await peer.current.setRemoteDescription(new RTCSessionDescription(offer));
-
-//             // Create answer
-//             const answereOffer = await peer.current.createAnswer();
-//             // await peer.current.setLocalDescription(answereOffer);
-//             await peer.current.setLocalDescription(new RTCSessionDescription(answereOffer));
-
-//             // Send answer to server    
-//             socket.current.emit('call:accepted', { answere: answereOffer, to: from });
-//             const userMedia = await navigator.mediaDevices.getUserMedia({ video: true });
-//             userMedia.getTracks().forEach(track => {
-//                 peer.current.addTrack(track, userMedia);
-//             });
-//         } catch (error) {
-//             console.error('Error handling incoming call:', error);
-//         }
-//     };
-
-//     // Function to handle user media
-//     const getUserMedia = async () => {
-//         try {
-//             const userMedia = await navigator.mediaDevices.getUserMedia({
-//                 video: true,
-//             });
-
-//             const localVideo = document.getElementById('local-video');
-//             if (localVideo) {
-//                 localVideo.srcObject = userMedia;
-//                 localVideo.onloadedmetadata = () => {
-//                     localVideo.play().catch(error => {
-//                         console.error('Error playing local video:', error);
-//                     });
-//                 };
-//             }
-
-//             // Add user media tracks to peer connection
-//             userMedia.getTracks().forEach(track => {
-//                 peer.current.addTrack(track, userMedia);
-//             });
-//         } catch (error) {
-//             console.error('Error getting user media:', error);
-//         }
-//     };
-
-//     // Function to fetch and update users
-//     const getAndUpdateUsers = async () => {
-//         try {
-//             const response = await fetch('http://localhost:8000/users');
-//             const jsonResponse = await response.json();
-
-//             // Update users list
-//             const usersDiv = document.getElementById('users');
-//             usersDiv.innerHTML = '';
-//             jsonResponse.forEach(user => {
-//                 const btn = document.createElement('button');
-//                 btn.id = user[0];
-//                 btn.textContent = user[0];
-//                 btn.onclick = () => createCall(user[0]);
-//                 usersDiv.appendChild(btn);
-//             });
-//         } catch (error) {
-//             console.error('Error fetching users:', error);
-//         }
-//     };
-
-//     // Initialize socket event listeners
-//     useEffect(() => {
-//         socket.current.on('users:joined', (id) => {
-//             const usersDiv = document.getElementById('users');
-//             const btn = document.createElement('button');
-//             btn.id = id;
-//             btn.textContent = id;
-//             btn.onclick = () => createCall(id);
-//             usersDiv.appendChild(btn);
-//         });
-
-//         socket.current.on('incomming:call', handleIncomingCall);
-
-//         socket.current.on('user:disconnect', id => {
-//             const userButton = document.getElementById(id);
-//             if (userButton) {
-//                 userButton.remove();
-//             }
-//         });
-
-//         socket.current.on('hello', ({ id }) => {
-//             const myIdSpan = document.getElementById('myId');
-//             if (myIdSpan) {
-//                 myIdSpan.innerText = id;
-//             }
-//         });
-
-//         getAndUpdateUsers();
-
-//         return () => {
-//             socket.current.disconnect();
-//         };
-//     }, []);
-
-//     return (
-//         <div>
-//             <h3>Your Id: <span id="myId"></span></h3>
-//             <h3>Online Users (click to connect)</h3>
-//             <div id="users"></div>
-//             <video id="local-video" autoPlay playsInline muted></video>
-//             <video id="remote-video" autoPlay playsInline></video>
-//             <p id="status"></p>
-//         </div>
-//     );
-// };
-
-// export default VideoApp;
-
-
-
-
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import io from 'socket.io-client';
 import { useParams, useLocation } from 'react-router-dom';
 
@@ -269,188 +6,179 @@ const VideoApp = () => {
     const { userId } = useParams();
     const location = useLocation(); // Get the userId from the URL
     const socket = useRef(null);
-    const peer = useRef(null);
+    const peer = useRef(new RTCPeerConnection({
+        iceServers: [
+            { urls: "stun:stun.l.google.com:19302" }
+        ]
+    }));
+    const [iceCandidatesQueue, setIceCandidatesQueue] = useState([]);
 
     useEffect(() => {
+        console.log('Initializing socket and peer connection');
         socket.current = io('http://localhost:8000');
-        peer.current = new RTCPeerConnection({
-            iceServers: [
-                { urls: "stun:stun.stunprotocol.org" }
-            ]
-        });
 
-        peer.current.ontrack = handleTrack;
-        peer.current.onicecandidate = handleIceCandidate;
-
-        socket.current.on('connect', () => {
-            console.log('Socket connected:', socket.current.connected);
-        });
-
-        peer.ontrack = async ({ streams: [stream] }) => {
-            const status = document.getElementById('status');
-            status.innerText = 'Incoming Stream';
-
-            const video = document.getElementById('remote-video');
-            if (!video.srcObject) {
-                video.srcObject = stream;
-                video.onloadedmetadata = () => {
-                    video.play().catch(error => {
-                        console.error('Error playing local video:', error);
-                    });
-                };
-            } else {
-                // You can choose to handle this scenario differently
-                console.warn('Video element already has srcObject set.');
-            }
-        };
-        socket.current.on('incomming:call', handleIncomingCall);
-        socket.current.emit('setUserId', JSON.parse(localStorage.getItem('userdata')).id);
-        socket.current.on('incomming:answere', async data => {
-            debugger
-            const status = document.getElementById('status');
-            status.innerText = 'incomming:answere';
-
-            const { offer } = data;
-
-            // if (peer.current.signalingState !== 'stable') {
-            //     console.warn('PeerConnection is not in the correct state to handle incoming call.');
-            //     peer.current.addEventListener('signalingstatechange', async function onStableState() {
-            //         if (peer.current.signalingState === 'stable') {
-            //             peer.current.removeEventListener('signalingstatechange', onStableState);
-            //             await peer.current.setRemoteDescription(new RTCSessionDescription(offer));
-            //         }
-            //     });
-            //     return;
-            // }
-
-            try {
-                await peer.current.setRemoteDescription(new RTCSessionDescription(offer));
-            } catch (error) {
-                console.log('Error in incomming:answere', error);
-            }
-        });
-
-        socket.current.on('ice-candidate', async ({ candidate }) => {
-            try {
-                await peer.current.addIceCandidate(new RTCIceCandidate(candidate));
-            } catch (error) {
-                console.error('Error adding received ICE candidate', error);
-            }
-        });
-
-        socket.current.connect();
-        // If the component was navigated to with a state, it means the user is accepting a call
-        if (location.state && location.state.offer) {
-            handleIncomingOffer(location.state.offer);
-        } else {
-            // If no state is passed, the user is initiating a call
-            getUserMedia().then(() => createCall(userId));
-        }
-        return () => {
-            peer.current.close();
-            socket.current.disconnect();
-        };
-    }, [userId]);
-
-    const handleTrack = ({ streams }) => {
-        const remoteVideo = document.getElementById('remote-video');
-        if (remoteVideo) {
-            remoteVideo.srcObject = streams[0];
+        peer.current.ontrack = ({ streams: [stream] }) => {
+            console.log('Received remote track');
+            const remoteVideo = document.getElementById('remote-video');
+            remoteVideo.srcObject = stream;
             remoteVideo.onloadedmetadata = () => {
                 remoteVideo.play().catch(error => {
                     console.error('Error playing remote video:', error);
                 });
             };
+        };
+
+        peer.current.onicecandidate = event => {
+            if (event.candidate) {
+                console.log('Sending ICE candidate:', event.candidate);
+                socket.current.emit('ice-candidate', { candidate: event.candidate, to: userId });
+            }
+        };
+
+        peer.current.oniceconnectionstatechange = () => {
+            console.log('ICE connection state change:', peer.current.iceConnectionState);
+            if (peer.current.iceConnectionState === 'failed') {
+                console.error('ICE connection failed. Restarting ICE...');
+                peer.current.restartIce();
+            }
+        };
+
+        peer.current.onicegatheringstatechange = () => {
+            console.log('ICE gathering state change:', peer.current.iceGatheringState);
+        };
+
+        peer.current.onicecandidateerror = event => {
+            console.error('ICE candidate error:', event);
+        };
+
+
+        socket.current.on('connect', () => {
+            console.log('Socket connected:', socket.current.connected);
+            socket.current.emit('setUserId', JSON.parse(localStorage.getItem('userdata')).id);
+        });
+
+        socket.current.on('incomming:call', async ({ fromUserId, offer }) => {
+            console.log('Incoming call from:', fromUserId, 'with offer:', offer);
+            await handleIncomingOffer(fromUserId, offer);
+        });
+
+        socket.current.on('incomming:answere', async ({ offer }) => {
+            // debugger
+            console.log('Received answer:', offer);
+            await peer.current.setRemoteDescription(new RTCSessionDescription(offer));
+            console.log('Remote description set with answer');
+            processIceCandidatesQueue();
+        });
+
+        socket.current.on('ice-candidate', async ({ candidate }) => {
+            console.log('Received ICE candidate:', candidate);
+            if (candidate) {
+                try {
+                    // debugger
+                    //await peer.current.addIceCandidate(new RTCIceCandidate(candidate));
+                    if (peer.current.remoteDescription) {
+                        await peer.current.addIceCandidate(new RTCIceCandidate(candidate));
+                        console.log('Added ICE candidate:', candidate);
+                    } else {
+                        console.log('Remote description not set, queuing ICE candidate:', candidate);
+                        setIceCandidatesQueue(prevQueue => [...prevQueue, candidate]);
+                    }
+                } catch (error) {
+                    console.error('Error adding received ICE candidate', error);
+                }
+            }
+        });
+
+        if (location.state && location.state.offer) {
+            console.log('Handling incoming offer from state:', location.state.offer);
+            handleIncomingOffer(userId, location.state.offer);
+        } else {
+            getUserMedia().then(() => createCall(userId));
+        }
+
+        return () => {
+            console.log('Closing peer connection and disconnecting socket');
+            peer.current.close();
+            socket.current.disconnect();
+        };
+    }, [userId]);
+
+    const getUserMedia = async () => {
+        try {
+            const userMedia = await navigator.mediaDevices.getUserMedia({ video: true });
+            console.log('User media obtained:', userMedia);
+
+            const localVideo = document.getElementById('local-video');
+            localVideo.srcObject = userMedia;
+            localVideo.onloadedmetadata = () => {
+                localVideo.play().catch(error => {
+                    console.error('Error playing local video:', error);
+                });
+            };
+
+            return userMedia;
+        } catch (error) {
+            console.error('Error getting user media:', error);
         }
     };
 
-    const handleIceCandidate = (event) => {
-        if (event.candidate) {
-            socket.current.emit('ice-candidate', { candidate: event.candidate });
+    const addLocalTracksToPeer = async () => {
+        const userMedia = await getUserMedia();
+        if (userMedia) {
+            userMedia.getTracks().forEach(track => {
+                console.log('Adding track to peer connection:', track);
+                peer.current.addTrack(track, userMedia);
+            });
         }
     };
 
     const createCall = async (to) => {
         try {
-            debugger
+            console.log('Creating call to:', to);
+            await addLocalTracksToPeer();
             const localOffer = await peer.current.createOffer();
             await peer.current.setLocalDescription(localOffer);
+            console.log('Local description set with offer:', localOffer);
             socket.current.emit('outgoing:call', { fromOffer: localOffer, to, fromUserId: JSON.parse(localStorage.getItem('userdata')).id });
         } catch (error) {
             console.error('Error creating call:', error);
         }
     };
 
-    const handleIncomingCall = async (data) => {
+    const handleIncomingOffer = async (fromUserId, offer) => {
         try {
-            debugger
-
-            console.log('incomming:called');
-            const status = document.getElementById('status');
-            status.innerText = 'incomming:call';
-
-            const { from, offer } = data;
-
-            if (peer.current.signalingState !== 'stable') {
-                console.warn('PeerConnection is not in the correct state to handle incoming call.');
-                peer.current.addEventListener('signalingstatechange', async function onStableState() {
-                    if (peer.current.signalingState === 'stable') {
-                        peer.current.removeEventListener('signalingstatechange', onStableState);
-                        await peer.current.setRemoteDescription(new RTCSessionDescription(offer));
-                        await createAnswer(from);
-                    }
-                });
-                return;
-            }
-
+            console.log('Handling incoming offer from:', fromUserId, 'with offer:', offer);
             await peer.current.setRemoteDescription(new RTCSessionDescription(offer));
-            await createAnswer(from);
+            await addLocalTracksToPeer();
+            const answer = await peer.current.createAnswer();
+            await peer.current.setLocalDescription(answer);
+            console.log('Local description set with answer:', answer);
+            socket.current.emit('call:accepted', { answer, to: fromUserId });
+            processIceCandidatesQueue();
         } catch (error) {
-            console.error('Error handling incoming call:', error);
+            console.error('Error handling incoming offer:', error);
         }
     };
 
-    const createAnswer = async (from) => {
-        const answerOffer = await peer.current.createAnswer();
-        await peer.current.setLocalDescription(new RTCSessionDescription(answerOffer));
-        socket.current.emit('call:accepted', { answer: answerOffer, to: from });
-
-        const userMedia = await navigator.mediaDevices.getUserMedia({ video: true });
-        userMedia.getTracks().forEach(track => {
-            peer.current.addTrack(track, userMedia);
-        });
-    };
-
-    const handleIncomingOffer = async (offer) => {
-        debugger
-        await peer.current.setRemoteDescription(new RTCSessionDescription(offer));
-        const answer = await peer.current.createAnswer();
-        await peer.current.setLocalDescription(answer);
-        socket.current.emit('call:accepted', { answer, to: userId });
-    };
-
-    const getUserMedia = async () => {
-        try {
-            const userMedia = await navigator.mediaDevices.getUserMedia({ video: true });
-
-            const localVideo = document.getElementById('local-video');
-            if (localVideo) {
-                localVideo.srcObject = userMedia;
-                localVideo.onloadedmetadata = () => {
-                    localVideo.play().catch(error => {
-                        console.error('Error playing local video:', error);
-                    });
-                };
+    const processIceCandidatesQueue = async () => {
+        console.log('Processing ICE candidates queue:', iceCandidatesQueue);
+        while (iceCandidatesQueue.length > 0) {
+            const candidate = iceCandidatesQueue.shift();
+            try {
+                if(candidate) await peer.current.addIceCandidate(new RTCIceCandidate(candidate));
+                console.log('Added queued ICE candidate:', candidate);
+            } catch (error) {
+                console.error('Error adding queued ICE candidate', error);
             }
-
-            userMedia.getTracks().forEach(track => {
-                peer.current.addTrack(track, userMedia);
-            });
-        } catch (error) {
-            console.error('Error getting user media:', error);
         }
     };
 
+    useEffect(() => {   
+        if (iceCandidatesQueue.length > 0) {
+            processIceCandidatesQueue()
+        }
+    }, [iceCandidatesQueue])
+    console.log('main iceCandidatesQueue', iceCandidatesQueue);
     return (
         <div>
             <h3>Video Call with {userId}</h3>
@@ -462,3 +190,4 @@ const VideoApp = () => {
 };
 
 export default VideoApp;
+
