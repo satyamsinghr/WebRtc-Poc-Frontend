@@ -445,21 +445,87 @@ button.btn.btn-primary.sendBtn:focus {
 
 .signin-box input:active,
 .signin-box input:focus,
-.signin-box input:hover
-{
+.signin-box input:hover {
   border: 1px solid #0090c1;
 }
+
 .forgot-password {
   font-size: 15px;
   font-weight: 700;
   color: #0090c1;
 }
-button.btn.btn-primary
-{
+
+button.btn.btn-primary {
   background-color: #0090c1;
   padding: 10px 15px;
   font-size: 14px;
   font-weight: 600;
+}
+
+section.VideoOuter {
+  min-height: 100vh;
+  padding: 12px;
+  background: #2a2a2a;
+}
+
+.incomingVideo {
+  min-height: calc(100vh - 80px);
+}
+
+.incomingVideo video {
+  min-width: 100%;
+  width: 100%;
+  border-radius: 0;
+  min-height: auto;
+}
+
+.videoInner {
+  max-height: calc(100vh - 80px);
+  overflow: hidden;
+  background-color: #cdcdcd;
+  border-radius: 10px;
+}
+
+.callerNamer {
+  position: absolute;
+  left: 15px;
+  bottom: 15px;
+}
+
+.callerNamer h3 {
+  margin: 0px !important;
+  font-size: 14px !important;
+  color: #fff;
+  text-transform: capitalize;
+  font-weight: 600;
+  margin: 0;
+  text-shadow: 0px 4px 5px BLACK;
+}
+
+.outgoingVideo {
+  position: absolute;
+  bottom: 10px;
+  right: 17px;
+  width: 190px;
+  height: 142px;
+  background-color: #cdcdcd;
+  box-shadow: 0 0 10px 0 #0000003d;
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.incomingCallerName {
+  position: absolute;
+  bottom: 10px;
+  left: 10px;
+}
+
+.incomingCallerName h4 {
+  font-size: 15px;
+  margin: 0;
+  color: #fff;
+  font-weight: 600;
+  text-shadow: 0px 4px 5px BLACK;
 }
 
 @media (max-width:768px) {
@@ -472,11 +538,56 @@ button.btn.btn-primary
     max-height: max-content;
   }
 
+  .outgoingVideo {
+    position: relative;
+    bottom: 0;
+    right: 0;
+    width: 100%;
+    height: auto;
+    background-color: #cdcdcd;
+    box-shadow: 0 0 10px 0 #0000003d;
+    border-radius: 16px;
+    margin-top: 10px;
+  }
+
   section.messageCEnterOuter {
     height: auto;
     overflow: hidden;
   }
+
+  .videoInner {
+    max-height: max-content;
+    overflow: hidden;
+    background-color: #cdcdcd;
+    border-radius: 10px;
+  }
+
   .signin-box {
     padding: 25px;
-}
+  }
+
+  .incomingVideo video {
+    min-width: 100%;
+    width: 100%;
+    border-radius: 10px;
+    min-height: auto;
+  }
+
+  .callerNamer,
+  .incomingCallerName {
+    position: relative;
+    left: 0;
+    bottom: 0px;
+    padding: 5px 15px 15px 15px;
+  }
+
+  section.VideoOuter {
+    min-height: 100vh;
+    padding: 15px 7px;
+    background: #2a2a2a;
+  }
+
+  .incomingVideo {
+    min-height: auto;
+  }
 }

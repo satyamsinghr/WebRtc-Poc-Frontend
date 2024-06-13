@@ -24,6 +24,7 @@ const Chat = ({ user }) => {
     const [users, setUsers] = useState([]);
     const [userData, setUserData] = useState([]);
     const [userName, setUserName] = useState({});
+    const [callerName, setCallerName] = useState('');
 
     useEffect(() => {
         socket.on('receiveMessage', (message) => {
@@ -107,9 +108,16 @@ const Chat = ({ user }) => {
             console.log('Socket connected:', socket.connected);
         });
 
-        socket.on('incomming:call', (data) => {
+        socket.on('incomming:call', async (data) => {
             console.log('incoming call from video to chat');
             setIncomingCall(data);
+
+            try {
+                const response = await axios.get(`http://localhost:8000/get-username?userId=${data.fromUserId}`);
+                setCallerName(response.data);
+            } catch (error) {
+                console.error('Error fetching messages:', error);
+            }
         });
 
         socket.emit('setUserId', JSON.parse(localStorage.getItem('userdata')).id);
@@ -145,7 +153,7 @@ const Chat = ({ user }) => {
                                         <p>JT</p>
                                     </div>
                                     <div class="user_info">
-                                        <h4 class="text-white">Jess Terff </h4>
+                                        <h4 class="text-white">{callerName} </h4>
                                         <p class="m-0 text-white">Incoming
                                             Call...</p>
                                     </div>
