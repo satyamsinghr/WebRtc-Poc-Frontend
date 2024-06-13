@@ -568,6 +568,14 @@ section.VideoOuter {
     border-radius: 10px;
   }
 
+
+  .videoInner {
+    max-height: max-content;
+    overflow: hidden;
+    background-color: #cdcdcd;
+    border-radius: 10px;
+  }
+
   .signin-box {
     padding: 25px;
   }

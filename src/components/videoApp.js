@@ -74,14 +74,8 @@ const VideoApp = () => {
 
         socket.current.on('call:disconnected', ({ from }) => {
             console.log('Call disconnected by user:', from);
-            peer.current.close();
-            
-            // Stop remote video stream
-            const remoteVideo = document.getElementById('remote-video');
-            if (remoteVideo && remoteVideo.srcObject) {
-                remoteVideo.srcObject.getTracks().forEach(track => track.stop());
-            }
-    
+
+            cleanUpMedia();
             // Optionally navigate back to chat page
             navigate('/chat');
         });
@@ -213,6 +207,13 @@ const VideoApp = () => {
         // Inform the other user that the call is disconnected
         socket.current.emit('call:disconnect', { from: JSON.parse(localStorage.getItem('userdata')).id, to: userId });
 
+        cleanUpMedia();
+        // Navigate back to chat page
+        navigate('/chat');
+    };
+
+    const cleanUpMedia = () => {
+        console.log('Cleaning up media');
 
         peer.current.close(); // Close peer connection
         socket.current.disconnect(); // Disconnect socket
@@ -220,13 +221,23 @@ const VideoApp = () => {
         // Stop local video stream
         const localVideo = document.getElementById('local-video');
         if (localVideo && localVideo.srcObject) {
-            localVideo.srcObject.getTracks().forEach(track => track.stop());
+            stopMediaTracks(localVideo.srcObject);
+            localVideo.srcObject = null;
         }
 
-        // Navigate back to chat page
-        navigate('/chat');
+        // Stop remote video stream
+        const remoteVideo = document.getElementById('remote-video');
+        if (remoteVideo && remoteVideo.srcObject) {
+            stopMediaTracks(remoteVideo.srcObject);
+            remoteVideo.srcObject = null;
+        }
     };
 
+    const stopMediaTracks = (stream) => {
+        if (stream) {
+            stream.getTracks().forEach(track => track.stop());
+        }
+    };
     console.log('main iceCandidatesQueue', iceCandidatesQueue);
     console.log('userName', userName);
     return (
