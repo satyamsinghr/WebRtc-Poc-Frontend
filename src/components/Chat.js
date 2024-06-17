@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import io from 'socket.io-client';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
+import moment from 'moment';
 const socket = io('http://localhost:8000');
 
 const Chat = ({ user }) => {
@@ -113,9 +114,8 @@ const Chat = ({ user }) => {
     const handleUserClick = (u) => {
         socket.emit('markMessagesAsSeen', { from: u.email, to: userData.id });
         setSelectedUser(u);
-        
     };
-
+ 
     const getLastMessage = (user) => {
         const userMessagesSentToUser = messages.filter(
             (msg) => msg.user === user.email && msg.to === userData.id
@@ -154,9 +154,31 @@ const Chat = ({ user }) => {
 
 
     const getUnreadMessageCount = (user) => {
-        return messages.filter(
-            (msg) => msg.user === user.email && msg.to === userData.id && !msg.seen
-        ).length;
+        // return messages.filter(
+        //     (msg) => msg.user === user.email && msg.to === userData.id && !msg.seen
+        // ).length;
+        let unreadCount = 0;
+
+        if (selectedUser && selectedUser.id === user.id) {
+            messages.forEach(msg => {
+                if (msg.user === user.email && msg.to === userData.id && !msg.seen) {
+                    messages.forEach(msg => {
+                        if (msg.user ===  user.email && msg.to === userData.id) {
+                            msg.seen = true; // Mark the message as seen
+                        }
+                    });
+                    socket.emit('markMessagesAsSeen', { from: user.email, to: userData.id });
+                }
+            });
+        }
+    
+        messages.forEach(msg => {
+            if (msg.user === user.email && msg.to === userData.id && !msg.seen) {
+                unreadCount++;
+            }
+        });
+    
+        return unreadCount;
     };
 
 
@@ -210,7 +232,12 @@ const Chat = ({ user }) => {
         const namesArray = name.split(' ');
         const initials = namesArray.map(n => n.charAt(0).toUpperCase()).join('');
         return initials;
-      };
+    };
+
+    const formatTime = (timestamp) => {
+        return moment(timestamp).format('hh:mm A');
+    };
+
 
     return (
         <section className="messageCEnterOuter">
@@ -224,7 +251,7 @@ const Chat = ({ user }) => {
                                 <div
                                     class="user w-100 flex-auto d-flex align-items-center gap-3">
                                     <div class="img">
-                                    <p>{getInitials(callerName)}</p>
+                                        <p>{getInitials(callerName)}</p>
                                     </div>
                                     <div class="user_info">
                                         <h4 class="text-white">{callerName} </h4>
@@ -392,7 +419,7 @@ const Chat = ({ user }) => {
                                     </div>
                                     <div
                                         className="header_option d-flex align-items-center gap-3">
-                                        <div>
+                                        {/* <div>
                                             <svg viewBox="0 0 24 24"
                                                 width="22px" height="22px"
                                                 fill="none"
@@ -410,8 +437,8 @@ const Chat = ({ user }) => {
                                                         strokeLinecap="round"
                                                         strokeLinejoin="round"></path>
                                                 </g></svg>
-                                        </div>
-                                        <div>
+                                        </div> */}
+                                        {/* <div>
                                             <svg viewBox="0 0 24 24" fill="none"
                                                 width="22px" height="22px"
                                                 xmlns="http://www.w3.org/2000/svg"><g
@@ -428,7 +455,7 @@ const Chat = ({ user }) => {
                                                         strokeLinecap="round"
                                                         strokeLinejoin="round"></path>
                                                 </g></svg>
-                                        </div>
+                                        </div> */}
                                         <div onClick={() => handleVideoCall(selectedUser.id)}>
                                             <svg viewBox="0 0 24 24" fill="none"
                                                 width="22px" height="22px"
@@ -499,6 +526,59 @@ const Chat = ({ user }) => {
                                                             <p>{msg.text}</p>
                                                         </div>
                                                         <div className="message_from d-flex align-items-center gap-2">
+                                                            <h6>{formatTime(msg.timestamp)}</h6>
+                                                            {msg.user === userData.email && (
+                                                                <>
+                                                                    {msg.seen ? (
+                                                                        <div class="read">
+                                                                            <svg viewBox="0 0 24 24"
+                                                                                fill="none"
+                                                                                width="18px"
+                                                                                height="18px"
+                                                                                xmlns="http://www.w3.org/2000/svg"><g
+                                                                                    id="SVGRepo_bgCarrier"
+                                                                                    stroke-width="0"></g><g
+                                                                                        id="SVGRepo_tracerCarrier"
+                                                                                        stroke-linecap="round"
+                                                                                        stroke-linejoin="round"></g><g
+                                                                                            id="SVGRepo_iconCarrier">
+                                                                                    <g
+                                                                                        id="Interface / Check_All_Big">
+                                                                                        <path
+                                                                                            id="Vector"
+                                                                                            d="M7 12L11.9497 16.9497L22.5572 6.34326M2.0498 12.0503L6.99955 17M17.606 6.39355L12.3027 11.6969"
+                                                                                            stroke="#367ef6"
+                                                                                            stroke-width="2"
+                                                                                            stroke-linecap="round"
+                                                                                            stroke-linejoin="round"></path>
+                                                                                    </g> </g></svg>
+                                                                        </div>) : (
+                                                                        <div class="deliverd">
+                                                                            <svg viewBox="0 0 24 24"
+                                                                                fill="none"
+                                                                                width="18px"
+                                                                                height="18px"
+                                                                                xmlns="http://www.w3.org/2000/svg"><g
+                                                                                    id="SVGRepo_bgCarrier"
+                                                                                    stroke-width="0"></g><g
+                                                                                        id="SVGRepo_tracerCarrier"
+                                                                                        stroke-linecap="round"
+                                                                                        stroke-linejoin="round"></g><g
+                                                                                            id="SVGRepo_iconCarrier">
+                                                                                    <g
+                                                                                        id="Interface / Check_All_Big">
+                                                                                        <path
+                                                                                            id="Vector"
+                                                                                            d="M7 12L11.9497 16.9497L22.5572 6.34326M2.0498 12.0503L6.99955 17M17.606 6.39355L12.3027 11.6969"
+                                                                                            stroke="#6e6e6e"
+                                                                                            stroke-width="2"
+                                                                                            stroke-linecap="round"
+                                                                                            stroke-linejoin="round"></path>
+                                                                                    </g> </g></svg>
+                                                                        </div>
+                                                                    )}
+                                                                </>
+                                                            )}
                                                         </div>
                                                     </div>
                                                 </div>
@@ -556,7 +636,7 @@ const Chat = ({ user }) => {
                                                         fill="#0F0F0F"></path>
                                                 </g></svg>
 
-                                            <svg viewBox="0 0 24 24" fill="none"
+                                            {/* <svg viewBox="0 0 24 24" fill="none"
                                                 width="25px"
                                                 height="25px"
                                                 xmlns="http://www.w3.org/2000/svg"><g
@@ -580,7 +660,7 @@ const Chat = ({ user }) => {
                                                         clipRule="evenodd"
                                                         d="M12 23C18.0751 23 23 18.0751 23 12C23 5.92487 18.0751 1 12 1C5.92487 1 1 5.92487 1 12C1 18.0751 5.92487 23 12 23ZM12 20.9932C7.03321 20.9932 3.00683 16.9668 3.00683 12C3.00683 7.03321 7.03321 3.00683 12 3.00683C16.9668 3.00683 20.9932 7.03321 20.9932 12C20.9932 16.9668 16.9668 20.9932 12 20.9932Z"
                                                         fill="#0F0F0F"></path>
-                                                </g></svg>
+                                                </g></svg> */}
                                         </div>
                                     </div>
                                     <button className="btn btn-primary sendBtn" onClick={sendMessage}>
