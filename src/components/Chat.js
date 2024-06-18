@@ -108,14 +108,14 @@ const Chat = ({ user }) => {
             }
         };
         fetchMessages();
-    }, [userData,selectedUser]);
+    }, [userData, selectedUser]);
 
 
     const handleUserClick = (u) => {
         socket.emit('markMessagesAsSeen', { from: u.email, to: userData.id });
         setSelectedUser(u);
     };
- 
+
     const getLastMessage = (user) => {
         const userMessagesSentToUser = messages.filter(
             (msg) => msg.user === user.email && msg.to === userData.id
@@ -163,7 +163,7 @@ const Chat = ({ user }) => {
             messages.forEach(msg => {
                 if (msg.user === user.email && msg.to === userData.id && !msg.seen) {
                     messages.forEach(msg => {
-                        if (msg.user ===  user.email && msg.to === userData.id) {
+                        if (msg.user === user.email && msg.to === userData.id) {
                             msg.seen = true; // Mark the message as seen
                         }
                     });
@@ -171,13 +171,13 @@ const Chat = ({ user }) => {
                 }
             });
         }
-    
+
         messages.forEach(msg => {
             if (msg.user === user.email && msg.to === userData.id && !msg.seen) {
                 unreadCount++;
             }
         });
-    
+
         return unreadCount;
     };
 
@@ -237,7 +237,15 @@ const Chat = ({ user }) => {
     const formatTime = (timestamp) => {
         return moment(timestamp).format('hh:mm A');
     };
-
+    const formatDate = (timestamp) => {
+        const date = new Date(timestamp);
+        return date.toLocaleDateString('en-US', {
+            weekday: 'long',
+            day: 'numeric',
+            month: 'long',
+            year: 'numeric'
+        });
+    };
 
     return (
         <section className="messageCEnterOuter">
@@ -506,18 +514,21 @@ const Chat = ({ user }) => {
                                 </div>
 
                                 <div className="chat_card d-flex flex-column gap-2">
-                                    <div
+                                    {/* <div
                                         className="chat_time d-flex align-items-center justify-content-center">
                                         <h4>{currentDate}</h4>
-                                    </div>
+                                    </div> */}
 
-                                    <div>
+                                    {/* <div>
                                         {messages
                                             .filter((msg) =>
                                                 (selectedUser && ((msg.user === selectedUser.email && msg.to === userData.id) || (msg.to === selectedUser.id && msg.user === userData.email))) ||
                                                 (!selectedUser && (msg.user === userData.email || msg.to === userData.id))
                                             )
                                             .map((msg, index) => (
+                                                <>
+                                                  <div>   <h4>{msg.timestamp}</h4>
+                                    </div>
                                                 <div
                                                     key={index}
                                                     className={`row justify-content-${msg.user === userData.email ? 'end' : 'start'} ${msg.user === userData.email ? 'chat_out' : 'chat_in'}`}>
@@ -582,7 +593,99 @@ const Chat = ({ user }) => {
                                                         </div>
                                                     </div>
                                                 </div>
+                                                </>
                                             ))}
+
+                                    </div> */}
+                                    <div>
+                                        {messages
+                                            .filter((msg) =>
+                                                (selectedUser && ((msg.user === selectedUser.email && msg.to === userData.id) || (msg.to === selectedUser.id && msg.user === userData.email))) ||
+                                                (!selectedUser && (msg.user === userData.email || msg.to === userData.id))
+                                            )
+                                            .reduce((acc, msg, index, arr) => {
+                                                const msgDate = formatDate(msg.timestamp);
+                                                const prevMsgDate = index > 0 ? formatDate(arr[index - 1].timestamp) : null;
+
+                                                if (msgDate !== prevMsgDate) {
+                                                    acc.push({ type: 'date', date: msgDate });
+                                                }
+                                                acc.push({ type: 'message', msg });
+                                                return acc;
+                                            }, [])
+                                            .map((item, index) => {
+                                                if (item.type === 'date') {
+                                                    return (
+                                                        <div key={`date-${index}`} className="chat_time d-flex align-items-center justify-content-center">
+                                                            <h4 >{item.date}</h4>
+                                                        </div>
+                                                    );
+                                                } else if (item.type === 'message') {
+                                                    const { msg } = item;
+                                                    return (
+                                                        <div
+                                                            key={index}
+                                                            className={`row justify-content-${msg.user === userData.email ? 'end' : 'start'} ${msg.user === userData.email ? 'chat_out' : 'chat_in'}`}>
+                                                            <div className={`col-xl-4 col-lg-5 col-md-5 col-sm-10 col-10 d-flex align-items-${msg.user === userData.email ? 'end' : 'start'} flex-column gap-3 justify-content-center`}>
+                                                                <div className={`${msg.user === userData.email ? 'chat_out_card' : 'chat_in_card'}`}>
+                                                                    <p>{msg.text}</p>
+                                                                </div>
+                                                                <div className="message_from d-flex align-items-center gap-2">
+                                                                    <h6>{formatTime(msg.timestamp)}</h6>
+                                                                    {msg.user === userData.email && (
+                                                                        <>
+                                                                            {msg.seen ? (
+                                                                                <div className="read">
+                                                                                    <svg viewBox="0 0 24 24"
+                                                                                        fill="none"
+                                                                                        width="18px"
+                                                                                        height="18px"
+                                                                                        xmlns="http://www.w3.org/2000/svg">
+                                                                                        <g id="SVGRepo_bgCarrier" strokeWidth="0"></g>
+                                                                                        <g id="SVGRepo_tracerCarrier" strokeLinecap="round" strokeLinejoin="round"></g>
+                                                                                        <g id="SVGRepo_iconCarrier">
+                                                                                            <g id="Interface / Check_All_Big">
+                                                                                                <path
+                                                                                                    id="Vector"
+                                                                                                    d="M7 12L11.9497 16.9497L22.5572 6.34326M2.0498 12.0503L6.99955 17M17.606 6.39355L12.3027 11.6969"
+                                                                                                    stroke="#367ef6"
+                                                                                                    strokeWidth="2"
+                                                                                                    strokeLinecap="round"
+                                                                                                    strokeLinejoin="round"></path>
+                                                                                            </g>
+                                                                                        </g>
+                                                                                    </svg>
+                                                                                </div>) : (
+                                                                                <div className="deliverd">
+                                                                                    <svg viewBox="0 0 24 24"
+                                                                                        fill="none"
+                                                                                        width="18px"
+                                                                                        height="18px"
+                                                                                        xmlns="http://www.w3.org/2000/svg">
+                                                                                        <g id="SVGRepo_bgCarrier" strokeWidth="0"></g>
+                                                                                        <g id="SVGRepo_tracerCarrier" strokeLinecap="round" strokeLinejoin="round"></g>
+                                                                                        <g id="SVGRepo_iconCarrier">
+                                                                                            <g id="Interface / Check_All_Big">
+                                                                                                <path
+                                                                                                    id="Vector"
+                                                                                                    d="M7 12L11.9497 16.9497L22.5572 6.34326M2.0498 12.0503L6.99955 17M17.606 6.39355L12.3027 11.6969"
+                                                                                                    stroke="#6e6e6e"
+                                                                                                    strokeWidth="2"
+                                                                                                    strokeLinecap="round"
+                                                                                                    strokeLinejoin="round"></path>
+                                                                                            </g>
+                                                                                        </g>
+                                                                                    </svg>
+                                                                                </div>
+                                                                            )}
+                                                                        </>
+                                                                    )}
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                }
+                                            })}
 
                                     </div>
                                 </div>
