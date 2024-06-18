@@ -3,6 +3,8 @@ import io from 'socket.io-client';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import moment from 'moment';
+import Modal from 'react-modal';
+
 const socket = io('http://localhost:8000');
 
 const Chat = ({ user }) => {
@@ -26,6 +28,9 @@ const Chat = ({ user }) => {
     const [userData, setUserData] = useState([]);
     const [userName, setUserName] = useState({});
     const [callerName, setCallerName] = useState('');
+    const [selectedFile, setSelectedFile] = useState(null);
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const fileInputRef = useRef(null);
 
     useEffect(() => {
         socket.on('receiveMessage', (message) => {
@@ -78,19 +83,58 @@ const Chat = ({ user }) => {
     }, [userData]);
 
 
-    const sendMessage = () => {
-        if (message.trim()) {
+    // const sendMessage = () => {
+    //     if (message.trim()) {
+    //         const messageObject = {
+    //             text: message,
+    //             user: userData.email,
+    //             to: selectedUser ? selectedUser.id : null,
+    //             timestamp: new Date().toISOString(),
+    //         };
+    //         socket.emit('sendMessage', { message: messageObject, to: selectedUser ? selectedUser.id : null });
+    //         setMessages((prevMessages) => [...prevMessages, messageObject]);
+    //         setMessage('');
+    //     }
+    // };
+    const sendMessage = async () => {
+        if (message.trim() || selectedFile) {
+            let fileUrl = '';
+            if (selectedFile) {
+                const formData = new FormData();
+                formData.append('file', selectedFile);
+                try {
+                    const response = await axios.post('http://localhost:8000/upload', formData, {
+                        headers: {
+                            'Content-Type': 'multipart/form-data',
+                        },
+                    });
+                    fileUrl = response.data.fileUrl;
+                } catch (error) {
+                    console.error('Error uploading file:', error);
+                    return;
+                }
+            }
+
             const messageObject = {
                 text: message,
                 user: userData.email,
                 to: selectedUser ? selectedUser.id : null,
                 timestamp: new Date().toISOString(),
+                seen: false,
+                file: fileUrl,
             };
+
             socket.emit('sendMessage', { message: messageObject, to: selectedUser ? selectedUser.id : null });
             setMessages((prevMessages) => [...prevMessages, messageObject]);
             setMessage('');
+            setSelectedFile(null);
+            if (fileInputRef.current) {
+                fileInputRef.current.value = null; // Reset file input
+            }
         }
     };
+
+
     useEffect(() => {
         if (users.length > 0 && (!selectedUser || !users.some(u => u.id === selectedUser.id))) {
             setSelectedUser(users[0]);
@@ -110,6 +154,13 @@ const Chat = ({ user }) => {
         fetchMessages();
     }, [userData, selectedUser]);
 
+    const handleSvgClick = () => {
+        setIsModalOpen(true);
+    };
+
+    const closeModal = () => {
+        setIsModalOpen(false);
+    };
 
     const handleUserClick = (u) => {
         socket.emit('markMessagesAsSeen', { from: u.email, to: userData.id });
@@ -128,7 +179,7 @@ const Chat = ({ user }) => {
         const lastMessage = allUserMessages.reduce((prev, current) => {
             return (new Date(prev.timestamp) > new Date(current.timestamp)) ? prev : current;
         });
-        return lastMessage.text;
+        return lastMessage.text || lastMessage.file;
     };
 
     const getLastMessageTime = (user) => {
@@ -247,6 +298,12 @@ const Chat = ({ user }) => {
         });
     };
 
+    const handleOutsideClick = (e) => {
+        // If the click is on the modal background (not the modal content), close the modal
+        if (e.target.className === 'modal') {
+            closeModal();
+        }
+    };
     return (
         <section className="messageCEnterOuter">
             <div className="container-fluid px-0">
@@ -629,6 +686,14 @@ const Chat = ({ user }) => {
                                                             <div className={`col-xl-4 col-lg-5 col-md-5 col-sm-10 col-10 d-flex align-items-${msg.user === userData.email ? 'end' : 'start'} flex-column gap-3 justify-content-center`}>
                                                                 <div className={`${msg.user === userData.email ? 'chat_out_card' : 'chat_in_card'}`}>
                                                                     <p>{msg.text}</p>
+                                                                    {msg.file && (
+                                                                        <a href={`http://localhost:8000/files/${msg.file}`}
+                                                                            download target="_blank"
+                                                                            rel="noopener noreferrer"
+                                                                            className={msg.user === userData.email ? 'white-link' : ''}>
+                                                                            {msg.file}
+                                                                        </a>
+                                                                    )}
                                                                 </div>
                                                                 <div className="message_from d-flex align-items-center gap-2">
                                                                     <h6>{formatTime(msg.timestamp)}</h6>
@@ -720,51 +785,47 @@ const Chat = ({ user }) => {
 
                                         <input type="text" value={message} onChange={(e) => setMessage(e.target.value)}
                                             placeholder="Type your message here" />
+                                     
                                         <div
                                             className="fileAttech d-flex align-items-center gap-2">
                                             <svg viewBox="0 0 24 24"
                                                 width="25px"
                                                 height="25px" fill="none"
-                                                xmlns="http://www.w3.org/2000/svg"><g
-                                                    id="SVGRepo_bgCarrier"
-                                                    strokeWidth="0"></g><g
-                                                        id="SVGRepo_tracerCarrier"
-                                                        strokeLinecap="round"
-                                                        strokeLinejoin="round"></g><g
-                                                            id="SVGRepo_iconCarrier">
+                                                xmlns="http://www.w3.org/2000/svg"
+                                                onClick={handleSvgClick}
+                                                style={{ cursor: 'pointer' }}
+                                            ><g
+                                                id="SVGRepo_bgCarrier"
+                                                strokeWidth="0"></g><g
+                                                    id="SVGRepo_tracerCarrier"
+                                                    strokeLinecap="round"
+                                                    strokeLinejoin="round"></g><g
+                                                        id="SVGRepo_iconCarrier">
                                                     <path
                                                         fillRule="evenodd"
                                                         clipRule="evenodd"
                                                         d="M7 8.00092L7 17C7 17.5523 6.55228 18 6 18C5.44772 18 5.00001 17.4897 5 16.9374C5 16.9374 5 16.9374 5 16.9374C5 16.937 5.00029 8.01023 5.00032 8.00092C5.00031 7.96702 5.00089 7.93318 5.00202 7.89931C5.00388 7.84357 5.00744 7.76644 5.01426 7.67094C5.02788 7.4803 5.05463 7.21447 5.10736 6.8981C5.21202 6.27011 5.42321 5.41749 5.85557 4.55278C6.28989 3.68415 6.95706 2.78511 7.97655 2.10545C9.00229 1.42162 10.325 1 12 1C13.6953 1 14.9977 1.42162 16.0235 2.10545C17.0429 2.78511 17.7101 3.68415 18.1444 4.55278C18.5768 5.41749 18.788 6.27011 18.8926 6.8981C18.9454 7.21447 18.9721 7.4803 18.9857 7.67094C18.9926 7.76644 18.9961 7.84357 18.998 7.89931C18.9991 7.93286 18.9997 7.96641 19 7.99998C19.0144 10.7689 19.0003 17.7181 19 18.001C19 18.0268 18.9993 18.0525 18.9985 18.0782C18.9971 18.1193 18.9945 18.175 18.9896 18.2431C18.9799 18.3791 18.961 18.5668 18.9239 18.7894C18.8505 19.2299 18.7018 19.8325 18.3944 20.4472C18.0851 21.0658 17.6054 21.7149 16.8672 22.207C16.1227 22.7034 15.175 23 14 23C12.825 23 11.8773 22.7034 11.1328 22.207C10.3946 21.7149 9.91489 21.0658 9.60557 20.4472C9.29822 19.8325 9.14952 19.2299 9.07611 18.7894C9.039 18.5668 9.02007 18.3791 9.01035 18.2431C9.00549 18.175 9.0029 18.1193 9.00153 18.0782C9.00069 18.0529 9.00008 18.0275 9 18.0022C8.99621 15.0044 9 12.0067 9 9.00902C9.00101 8.95723 9.00276 8.89451 9.00645 8.84282C9.01225 8.76155 9.02338 8.65197 9.04486 8.5231C9.08702 8.27011 9.17322 7.91749 9.35558 7.55278C9.53989 7.18415 9.83207 6.78511 10.2891 6.48045C10.7523 6.17162 11.325 6 12 6C12.675 6 13.2477 6.17162 13.7109 6.48045C14.1679 6.78511 14.4601 7.18415 14.6444 7.55278C14.8268 7.91749 14.913 8.27011 14.9551 8.5231C14.9766 8.65197 14.9877 8.76155 14.9936 8.84282C14.9984 8.91124 14.9999 8.95358 15 8.99794L15 17C15 17.5523 14.5523 18 14 18C13.4477 18 13 17.5523 13 17V9.00902C12.9995 8.99543 12.9962 8.93484 12.9824 8.8519C12.962 8.72989 12.9232 8.58251 12.8556 8.44722C12.7899 8.31585 12.7071 8.21489 12.6015 8.14455C12.5023 8.07838 12.325 8 12 8C11.675 8 11.4977 8.07838 11.3985 8.14455C11.2929 8.21489 11.2101 8.31585 11.1444 8.44722C11.0768 8.58251 11.038 8.72989 11.0176 8.8519C11.0038 8.93484 11.0005 8.99543 11 9.00902V17.9957C11.0009 18.0307 11.0028 18.0657 11.0053 18.1006C11.0112 18.1834 11.0235 18.3082 11.0489 18.4606C11.1005 18.7701 11.2018 19.1675 11.3944 19.5528C11.5851 19.9342 11.8554 20.2851 12.2422 20.543C12.6227 20.7966 13.175 21 14 21C14.825 21 15.3773 20.7966 15.7578 20.543C16.1446 20.2851 16.4149 19.9342 16.6056 19.5528C16.7982 19.1675 16.8995 18.7701 16.9511 18.4606C16.9765 18.3082 16.9888 18.1834 16.9947 18.1006C16.9972 18.0657 16.9991 18.0307 17 17.9956L16.9999 7.99892C16.9997 7.98148 16.9982 7.91625 16.9908 7.81343C16.981 7.67595 16.9609 7.47303 16.9199 7.2269C16.837 6.72989 16.6732 6.08251 16.3556 5.44722C16.0399 4.81585 15.5821 4.21489 14.9141 3.76955C14.2523 3.32838 13.325 3 12 3C10.675 3 9.7477 3.32838 9.08595 3.76955C8.41793 4.21489 7.96011 4.81585 7.64443 5.44722C7.32678 6.08251 7.16298 6.72989 7.08014 7.2269C7.03912 7.47303 7.019 7.67595 7.00918 7.81343C7.0025 7.90687 7.00117 7.9571 7 8.00092Z"
                                                         fill="#0F0F0F"></path>
                                                 </g></svg>
-
-                                            {/* <svg viewBox="0 0 24 24" fill="none"
-                                                width="25px"
-                                                height="25px"
-                                                xmlns="http://www.w3.org/2000/svg"><g
-                                                    id="SVGRepo_bgCarrier"
-                                                    strokeWidth="0"></g><g
-                                                        id="SVGRepo_tracerCarrier"
-                                                        strokeLinecap="round"
-                                                        strokeLinejoin="round"></g><g
-                                                            id="SVGRepo_iconCarrier">
-                                                    <path
-                                                        d="M8.5 11C9.32843 11 10 10.3284 10 9.5C10 8.67157 9.32843 8 8.5 8C7.67157 8 7 8.67157 7 9.5C7 10.3284 7.67157 11 8.5 11Z"
-                                                        fill="#0F0F0F"></path>
-                                                    <path
-                                                        d="M17 9.5C17 10.3284 16.3284 11 15.5 11C14.6716 11 14 10.3284 14 9.5C14 8.67157 14.6716 8 15.5 8C16.3284 8 17 8.67157 17 9.5Z"
-                                                        fill="#0F0F0F"></path>
-                                                    <path
-                                                        d="M8.88875 13.5414C8.63822 13.0559 8.0431 12.8607 7.55301 13.1058C7.05903 13.3528 6.8588 13.9535 7.10579 14.4474C7.18825 14.6118 7.29326 14.7659 7.40334 14.9127C7.58615 15.1565 7.8621 15.4704 8.25052 15.7811C9.04005 16.4127 10.2573 17.0002 12.0002 17.0002C13.7431 17.0002 14.9604 16.4127 15.7499 15.7811C16.1383 15.4704 16.4143 15.1565 16.5971 14.9127C16.7076 14.7654 16.8081 14.6113 16.8941 14.4485C17.1387 13.961 16.9352 13.3497 16.4474 13.1058C15.9573 12.8607 15.3622 13.0559 15.1117 13.5414C15.0979 13.5663 14.9097 13.892 14.5005 14.2194C14.0401 14.5877 13.2573 15.0002 12.0002 15.0002C10.7431 15.0002 9.96038 14.5877 9.49991 14.2194C9.09071 13.892 8.90255 13.5663 8.88875 13.5414Z"
-                                                        fill="#0F0F0F"></path>
-                                                    <path
-                                                        fillRule="evenodd"
-                                                        clipRule="evenodd"
-                                                        d="M12 23C18.0751 23 23 18.0751 23 12C23 5.92487 18.0751 1 12 1C5.92487 1 1 5.92487 1 12C1 18.0751 5.92487 23 12 23ZM12 20.9932C7.03321 20.9932 3.00683 16.9668 3.00683 12C3.00683 7.03321 7.03321 3.00683 12 3.00683C16.9668 3.00683 20.9932 7.03321 20.9932 12C20.9932 16.9668 16.9668 20.9932 12 20.9932Z"
-                                                        fill="#0F0F0F"></path>
-                                                </g></svg> */}
                                         </div>
+                                        {isModalOpen && (
+                                            <div className="modal" onClick={handleOutsideClick}>
+                                                <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+                                                    <span className="close" onClick={closeModal}>
+                                                        &times;
+                                                    </span>
+                                                    <input
+                                            type="file"
+                                            ref={fileInputRef}
+                                            // onChange={(e) => setSelectedFile(e.target.files[0])}
+                                            onChange={(e) => {
+                                                setSelectedFile(e.target.files[0]);
+                                                closeModal();
+                                            }}
+                                        />
+                                                </div>
+                                            </div>
+                                        )}
                                     </div>
                                     <button className="btn btn-primary sendBtn" onClick={sendMessage}>
                                         <svg viewBox="0 0 24 24" fill="none"
